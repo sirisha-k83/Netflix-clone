@@ -23,15 +23,25 @@ pipeline {
       }
     }
 
-    stage('SonarQube Analysis') {
-      steps {
-        withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
-          withSonarQubeEnv('SonarQube') {
-            sh "sonar-scanner -Dsonar.login=${SONAR_TOKEN}"
-          }
+   stage('SonarQube Analysis') {
+    steps {
+        script {
+            // 1. Get the path of the scanner tool you named 'sonar-scanner'
+            def scannerHome = tool 'sonar-scanner'
+            
+            // 2. Use 'sonarqube' to match your Jenkins Credentials ID
+            withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
+                
+                // 3. This 'SonarQube' must match your System Name in 'Manage Jenkins' -> 'System'
+                withSonarQubeEnv('SonarQube') {
+                    sh "${scannerHome}/bin/sonar-scanner \
+                      -Dsonar.projectKey=netflix-clone \
+                      -Dsonar.login=${SONAR_TOKEN}"
+                }
+            }
         }
-      }
     }
+}
 
     stage('Docker Build & Push to ACR') {
       steps {
@@ -83,3 +93,4 @@ pipeline {
   }
 
 }
+
