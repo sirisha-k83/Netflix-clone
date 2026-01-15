@@ -25,7 +25,7 @@ pipeline {
 
     stage('SonarQube Analysis') {
       steps {
-        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
+        withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
           withSonarQubeEnv('SonarQube') {
             sh "sonar-scanner -Dsonar.login=${SONAR_TOKEN}"
           }
@@ -81,4 +81,5 @@ pipeline {
       echo "Build failed. Check Jenkins logs for details."
     }
   }
+
 }
