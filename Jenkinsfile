@@ -35,27 +35,28 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push to ACR') {
+        stage('Deploy to AKS') {
     steps {
         script {
-            try {
-                withCredentials([
-                    usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
-                    string(credentialsId: 'ACR_URL', variable: 'RAW_URL'),
-                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'TENANT')
-                ]) {
-                    echo "Credentials loaded successfully. Starting Docker login..."
-                    def cleanUrl = RAW_URL.replace("https://", "")
-                    sh "echo ${PASS} | docker login ${cleanUrl} -u ${USER} --password-stdin"
-                }
-            } catch (Exception e) {
-                echo "Caught Error in Docker Stage: ${e.getMessage()}"
-                error "Failing build due to: ${e.getMessage()}"
+            // We use the same credentials you already set up
+            withCredentials([
+                usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
+                string(credentialsId: 'tenant_id', variable: 'TENANT')
+            ]) {
+                sh """
+                    # 1. Log in the Azure CLI using the Service Principal
+                    az login --service-principal -u ${USER} -p ${PASS} --tenant ${TENANT}
+                    
+                    # 2. Get the AKS kubeconfig
+                    az aks get-credentials --name myaks --resource-group my-rg --overwrite-existing
+                    
+                    # 3. Update the deployment
+                    kubectl set image deployment/netflix-deployment netflix-app=${env.FINAL_IMAGE}
+                """
             }
         }
     }
 }
-
         stage('Deploy to AKS') {
             steps {
                 sh """
@@ -75,5 +76,6 @@ pipeline {
         }
     }
 }
+
 
 
