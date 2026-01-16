@@ -36,26 +36,28 @@ pipeline {
         }
 
         stage('Docker Build & Push to ACR') {
-            steps {
-                script {
-                    withCredentials([
-                        usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
-                        string(credentialsId: 'ACR_URL', variable: 'RAW_URL'),
-                        string(credentialsId: 'tenant_id', variable: 'TENANT')
-                    ]) {
-                        def cleanUrl = RAW_URL.replace("https://", "")
-                        def fullImageTag = "${cleanUrl}/${IMAGE_NAME}:${BUILD_NUMBER}"
-
-                        sh "echo ${PASS} | docker login ${cleanUrl} -u ${USER} --password-stdin"
-                        sh "docker build -t ${IMAGE_NAME} ."
-                        sh "docker tag ${IMAGE_NAME} ${fullImageTag}"
-                        sh "docker push ${fullImageTag}"
-                        
-                        env.FINAL_IMAGE = fullImageTag
-                    }
+    steps {
+        script {
+            try {
+                withCredentials([
+                    usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
+                    string(credentialsId: 'ACR_URL', variable: 'RAW_URL'),
+                    string(credentialsId: 'tenant_id', variable: 'TENANT')
+                ]) {
+                    echo "Credentials bound successfully. URL is: ${RAW_URL}"
+                    sh 'docker --version' // Check if docker is actually available
+                    
+                    def cleanUrl = RAW_URL.replace("https://", "")
+                    sh "echo ${PASS} | docker login ${cleanUrl} -u ${USER} --password-stdin"
+                    // ... rest of your docker commands
                 }
+            } catch (Exception e) {
+                echo "STAGE FAILED: ${e.toString()}"
+                error "Aborting build due to: ${e.getMessage()}"
             }
         }
+    }
+}
 
         stage('Deploy to AKS') {
             steps {
@@ -89,3 +91,4 @@ pipeline {
         }
     }
 }
+
