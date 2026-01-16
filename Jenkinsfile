@@ -83,6 +83,9 @@ stage('Docker Build & Push to ACR') {
                             
                             # 2. Get the AKS kubeconfig
                             az aks get-credentials --name example-aks-cluster --resource-group rg1 --overwrite-existing
+
+                            kubectl apply -f deployment.yml
+                            kubectl apply -f service.yml
                             
                             # 3. Update the deployment
                             kubectl set image deployment/netflix-app netflix-app=${env.FINAL_IMAGE}
@@ -102,6 +105,7 @@ stage('Docker Build & Push to ACR') {
         }
     }
 }
+
 
 
 
