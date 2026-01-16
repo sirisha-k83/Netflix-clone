@@ -35,7 +35,7 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push to ACR') {
+stage('Docker Build & Push to ACR') {
     steps {
         script {
             try {
@@ -44,16 +44,27 @@ pipeline {
                     string(credentialsId: 'ACR_URL', variable: 'RAW_URL'),
                     string(credentialsId: 'AZURE_TENANT_ID', variable: 'TENANT')
                 ]) {
-                    echo "Credentials bound successfully. URL is: ${RAW_URL}"
-                    sh 'docker --version' // Check if docker is actually available
-                    
                     def cleanUrl = RAW_URL.replace("https://", "")
+                    // We define the full name here so we can use it for tag and push
+                    def fullImageTag = "${cleanUrl}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                    
+                    echo "Logging into ACR: ${cleanUrl}"
                     sh "echo ${PASS} | docker login ${cleanUrl} -u ${USER} --password-stdin"
-                    // ... rest of your docker commands
+                    
+                    echo "Building Image: ${fullImageTag}"
+                    // This command looks for the 'Dockerfile' in your repo root
+                    sh "docker build -t ${IMAGE_NAME} ."
+                    
+                    echo "Tagging and Pushing..."
+                    sh "docker tag ${IMAGE_NAME} ${fullImageTag}"
+                    sh "docker push ${fullImageTag}"
+                    
+                    // CRITICAL: Save this to the environment so the next stage can see it
+                    env.FINAL_IMAGE = fullImageTag
                 }
             } catch (Exception e) {
-                echo "STAGE FAILED: ${e.toString()}"
-                error "Aborting build due to: ${e.getMessage()}"
+                echo "DOCKER STAGE FAILED: ${e.toString()}"
+                error "Aborting build"
             }
         }
     }
@@ -91,6 +102,7 @@ pipeline {
         }
     }
 }
+
 
 
 
