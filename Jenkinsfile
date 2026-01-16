@@ -1,76 +1,58 @@
 pipeline {
-  agent any
-
-  triggers {
-    githubPush()
-  }
-
-  environment {
-    // Defined here so it can be used across multiple stages
-    IMAGE_NAME = "netflix-clone"
-  }
-
-  stages {
-    stage('Checkout') {
-      steps {
-        git branch: 'main', url: 'https://github.com/sirisha-k83/Netflix-clone.git'
-      }
+    agent any
+    tools {
+        nodejs 'node20' // Ensure this matches your Global Tool Configuration name
     }
-
-    stage('Install Dependencies') {
-      steps {
-        sh 'npm install'
-      }
+    environment {
+        IMAGE_NAME = "netflix-clone"
     }
-
-   stage('SonarQube Analysis') {
-    steps {
-        script {
-            // 1. Get the path of the scanner tool you named 'sonar-scanner'
-            def scannerHome = tool 'sonar-scanner'
-            
-            // 2. Use 'sonarqube' to match your Jenkins Credentials ID
-            withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
-                
-                // 3. This 'SonarQube' must match your System Name in 'Manage Jenkins' -> 'System'
-                withSonarQubeEnv('SonarQube') {
-                    sh "${scannerHome}/bin/sonar-scanner \
-                      -Dsonar.projectKey=netflix-clone \
-                      -Dsonar.login=${SONAR_TOKEN}"
+    stages {
+        stage('Checkout') {
+            steps {
+                // Using your 'git' ID for GitHub credentials
+                git branch: 'main', credentialsId: 'git', url: 'https://github.com/sirisha-k83/Netflix-clone.git'
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonar-scanner'
+                    // Using 'sonarqube' ID from your credentials
+                    withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
+                        withSonarQubeEnv('SonarQube') {
+                            sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=netflix-clone -Dsonar.login=${SONAR_TOKEN}"
+                        }
+                    }
                 }
             }
         }
-    }
-}
+        stage('Docker Build & Push to ACR') {
+            steps {
+                script {
+                    // IDs matched to your screenshot: 'AZURE_CRED_ID', 'acr url', 'tenant_id'
+                    withCredentials([
+                        usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
+                        string(credentialsId: 'ACR_URL', variable: 'RAW_URL'),
+                        string(credentialsId: 'tenant_id', variable: 'TENANT')
+                    ]) {
+                        def cleanUrl = RAW_URL.replace("https://", "")
+                        def fullImageTag = "${cleanUrl}/${IMAGE_NAME}:${BUILD_NUMBER}"
 
-    stage('Docker Build & Push to ACR') {
-      steps {
-        script {
-          // IDs matched to your Credentials screenshot
-          withCredentials([
-            usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
-            string(credentialsId: 'acr url', variable: 'RAW_URL'),
-            string(credentialsId: 'tenant_id', variable: 'TENANT')
-          ]) {
-            def cleanUrl = RAW_URL.replace("https://", "")
-            def fullImageTag = "${cleanUrl}/${IMAGE_NAME}:${BUILD_NUMBER}"
-
-            // 1. Login
-            sh "docker login ${cleanUrl} -u ${USER} -p ${PASS}"
-            
-            // 2. Build (Make sure Dockerfile is in the root of the repo)
-            sh "docker build -t ${IMAGE_NAME} ."
-            
-            // 3. Tag and Push
-            sh "docker tag ${IMAGE_NAME} ${fullImageTag}"
-            sh "docker push ${fullImageTag}"
-            
-            // Set env variable for the deployment stage
-            env.FINAL_IMAGE = fullImageTag
-          }
+                        sh "docker login ${cleanUrl} -u ${USER} -p ${PASS}"
+                        sh "docker build -t ${IMAGE_NAME} ."
+                        sh "docker tag ${IMAGE_NAME} ${fullImageTag}"
+                        sh "docker push ${fullImageTag}"
+                        
+                        env.FINAL_IMAGE = fullImageTag
+                    }
+                }
+            }
         }
-      }
-    }
 
     stage('Deploy to AKS') {
       steps {
@@ -81,7 +63,6 @@ pipeline {
         """
       }
     }
-  }
 
   post {
     success {
@@ -93,4 +74,6 @@ pipeline {
   }
 
 }
+}
+
 
