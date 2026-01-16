@@ -64,7 +64,7 @@ pipeline {
                 script {
                     withCredentials([
                         usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
-                        string(credentialsId: 'tenant_id', variable: 'TENANT')
+                        string(credentialsId: 'AZURE_TENANT_ID', variable: 'TENANT')
                     ]) {
                         sh """
                             # 1. Log in the Azure CLI using the Service Principal
@@ -91,5 +91,6 @@ pipeline {
         }
     }
 }
+
 
 
