@@ -42,7 +42,7 @@ pipeline {
                 withCredentials([
                     usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
                     string(credentialsId: 'ACR_URL', variable: 'RAW_URL'),
-                    string(credentialsId: 'tenant_id', variable: 'TENANT')
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'TENANT')
                 ]) {
                     echo "Credentials bound successfully. URL is: ${RAW_URL}"
                     sh 'docker --version' // Check if docker is actually available
@@ -91,4 +91,5 @@ pipeline {
         }
     }
 }
+
 
