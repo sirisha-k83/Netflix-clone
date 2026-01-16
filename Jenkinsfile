@@ -74,7 +74,7 @@ pipeline {
                             az aks get-credentials --name example-aks-cluster --resource-group rg1 --overwrite-existing
                             
                             # 3. Update the deployment
-                            kubectl set image deployment/netflix-deployment netflix-app=${env.FINAL_IMAGE}
+                            kubectl set image deployment/deployment netflix-app=${env.FINAL_IMAGE}
                         """
                     }
                 }
@@ -91,6 +91,7 @@ pipeline {
         }
     }
 }
+
 
 
 
