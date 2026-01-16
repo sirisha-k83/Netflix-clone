@@ -71,7 +71,7 @@ pipeline {
                             az login --service-principal -u ${USER} -p ${PASS} --tenant ${TENANT}
                             
                             # 2. Get the AKS kubeconfig
-                            az aks get-credentials --name myaks --resource-group my-rg --overwrite-existing
+                            az aks get-credentials --name example-aks-cluster --resource-group rg1 --overwrite-existing
                             
                             # 3. Update the deployment
                             kubectl set image deployment/netflix-deployment netflix-app=${env.FINAL_IMAGE}
@@ -91,6 +91,7 @@ pipeline {
         }
     }
 }
+
 
 
 
