@@ -70,31 +70,6 @@ stage('Docker Build & Push to ACR') {
     }
 }
 
-        stage('Deploy to AKS') {
-            steps {
-                script {
-                    withCredentials([
-                        usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
-                        string(credentialsId: 'AZURE_TENANT_ID', variable: 'TENANT')
-                    ]) {
-                        sh """
-                            # 1. Log in the Azure CLI using the Service Principal
-                            az login --service-principal -u ${USER} -p ${PASS} --tenant ${TENANT}
-                            
-                            # 2. Get the AKS kubeconfig
-                            az aks get-credentials --name example-aks-cluster --resource-group rg1 --overwrite-existing
-
-                            kubectl apply -f deployment.yml
-                            kubectl apply -f service.yml
-                            
-                            # 3. Update the deployment
-                            kubectl set image deployment/netflix-app netflix-app=${env.FINAL_IMAGE}
-                        """
-                    }
-                }
-            }
-        }
-    }
 
     post {
         success {
@@ -105,6 +80,7 @@ stage('Docker Build & Push to ACR') {
         }
     }
 }
+
 
 
 
