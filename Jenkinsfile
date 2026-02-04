@@ -68,7 +68,33 @@ pipeline {
                 }
             }
         }
-    } // End of Stages
+    } 
+      stage('Deploy to AKS') {
+            steps {
+                script {
+                    withCredentials([
+                        usernamePassword(credentialsId: 'AZURE_CRED_ID', usernameVariable: 'USER', passwordVariable: 'PASS'),
+                        string(credentialsId: 'AZURE_TENANT_ID', variable: 'TENANT')
+                    ]) {
+                        sh """
+                            # 1. Log in the Azure CLI using the Service Principal
+                            az login --service-principal -u ${USER} -p ${PASS} --tenant ${TENANT}
+                            
+                            # 2. Get the AKS kubeconfig
+                            az aks get-credentials --name MY_AKS_CLUSTER_NAME --resource-group rg1 --overwrite-existing
+
+                            kubectl apply -f deployment.yml
+                            kubectl apply -f service.yml
+                            
+                            # 3. Update the deployment
+                            kubectl set image deployment/netflix-app netflix-app=${env.FINAL_IMAGE}
+                        """
+                    }
+                }
+            }
+        }
+    }
+    
 
     post {
         success {
@@ -83,5 +109,4 @@ pipeline {
             sh "docker rmi ${env.FINAL_IMAGE} || true"
         }
     }
-}
 
