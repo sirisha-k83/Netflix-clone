@@ -16,8 +16,9 @@ spec:
     spec:
       containers:
       - name: netflix-app
-        image: sirireg.azurecr.io/netflix-clone:latest
+        image: siris.azurecr.io/netflix-clone:latest
         ports:
         - containerPort: 80
+
 
 
