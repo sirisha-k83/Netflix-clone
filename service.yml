@@ -3,11 +3,12 @@ kind: Service
 metadata:
   name: netflix-app
 spec:
-  type: ClusterIP
+  type: ClusterIP # Changed from LoadBalancer to work with your Ingress
   ports:
-  - port: 80        # The port you type in the browser
-    targetPort: 80  # The port your container is listening on
+  - port: 80        # Port the Ingress looks for
+    targetPort: 80  # Port the Container listens on
   selector:
     app: netflix-app
+
 
 
