@@ -3,10 +3,11 @@ kind: Service
 metadata:
   name: netflix-app
 spec:
-  type: LoadBalancer # Changed from NodePort to LoadBalancer
+  type: ClusterIP
   ports:
   - port: 80        # The port you type in the browser
     targetPort: 80  # The port your container is listening on
   selector:
     app: netflix-app
+
 
