@@ -88,6 +88,7 @@ pipeline {
 
                             kubectl apply -f deployment.yml
                             kubectl apply -f service.yml
+                            kubectl apply -f ingress.yml
                             
                             # Dynamically update the image to the one we just built
                             kubectl set image deployment/netflix-app netflix-app=${env.FINAL_IMAGE}
@@ -110,4 +111,5 @@ pipeline {
         }
     }
 }
+
 
