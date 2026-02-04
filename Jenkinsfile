@@ -3,12 +3,14 @@ pipeline {
     
     tools {
         nodejs 'node20' 
-        // Ensure 'sonar-scanner' is also defined in Global Tool Configuration
+        // Ensure 'sonar-scanner' is defined in Global Tool Configuration
     }
     
     environment {
         IMAGE_NAME = "netflix-clone"
-        // It's cleaner to define ACR_URL as an env var if it's not a secret
+        // Update these to match your actual Azure resources
+        AKS_CLUSTER_NAME = "MY_AKS_CLUSTER_NAME"
+        RESOURCE_GROUP = "rg1"
     }
     
     stages {
@@ -31,10 +33,17 @@ pipeline {
                     withSonarQubeEnv('SonarQube') {
                         sh "${scannerHome}/bin/sonar-scanner \
                             -Dsonar.projectKey=netflix-clone \
-                            -Dsonar.sources=. \
-                            -Dsonar.host.url=${SONAR_HOST_URL}" 
-                            // Note: withSonarQubeEnv usually handles the token/URL automatically
+                            -Dsonar.sources=."
                     }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                // This waits for SonarQube to callback Jenkins via Webhook
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -50,26 +59,23 @@ pipeline {
                             def cleanUrl = RAW_URL.replace("https://", "")
                             def fullImageTag = "${cleanUrl}/${IMAGE_NAME}:${BUILD_NUMBER}"
                             
-                            echo "Logging into ACR: ${cleanUrl}"
-                            sh "echo ${PASS} | docker login ${cleanUrl} -u ${USER} --password-stdin"
+                            // Use single quotes to avoid Groovy interpolation security warnings
+                            sh 'echo $PASS | docker login ' + cleanUrl + ' -u $USER --password-stdin'
                             
-                            echo "Building and Tagging: ${fullImageTag}"
+                            echo "Building: ${fullImageTag}"
                             sh "docker build -t ${fullImageTag} ."
-                            
-                            echo "Pushing..."
                             sh "docker push ${fullImageTag}"
                             
                             env.FINAL_IMAGE = fullImageTag
                         }
                     } catch (Exception e) {
-                        echo "DOCKER STAGE FAILED: ${e.toString()}"
-                        error "Aborting build"
+                        error "Docker Stage Failed: ${e.toString()}"
                     }
                 }
             }
         }
-    } 
-      stage('Deploy to AKS') {
+
+        stage('Deploy to AKS') {
             steps {
                 script {
                     withCredentials([
@@ -77,36 +83,30 @@ pipeline {
                         string(credentialsId: 'AZURE_TENANT_ID', variable: 'TENANT')
                     ]) {
                         sh """
-                            # 1. Log in the Azure CLI using the Service Principal
                             az login --service-principal -u ${USER} -p ${PASS} --tenant ${TENANT}
-                            
-                            # 2. Get the AKS kubeconfig
-                            az aks get-credentials --name MY_AKS_CLUSTER_NAME --resource-group rg1 --overwrite-existing
+                            az aks get-credentials --name ${AKS_CLUSTER_NAME} --resource-group ${RESOURCE_GROUP} --overwrite-existing
 
                             kubectl apply -f deployment.yml
                             kubectl apply -f service.yml
                             
-                            # 3. Update the deployment
+                            # Dynamically update the image to the one we just built
                             kubectl set image deployment/netflix-app netflix-app=${env.FINAL_IMAGE}
                         """
                     }
                 }
             }
         }
-    }
-    
+    } // End of Stages
 
     post {
         success {
             echo "Deployment successful: ${env.FINAL_IMAGE}"
         }
         failure {
-            echo "Build failed. Check Jenkins logs for details."
+            echo "Build failed. Check Jenkins logs."
         }
         cleanup {
-            echo "Cleaning up workspace..."
-            // Option to remove local docker images to save disk space
             sh "docker rmi ${env.FINAL_IMAGE} || true"
         }
     }
-
+}
