@@ -3,12 +3,10 @@ pipeline {
     
     tools {
         nodejs 'node20' 
-        // Ensure 'sonar-scanner' is defined in Global Tool Configuration
     }
     
     environment {
         IMAGE_NAME = "netflix-clone"
-        // Update these to match your actual Azure resources
         AKS_CLUSTER_NAME = "MY_AKS_CLUSTER_NAME"
         RESOURCE_GROUP = "rg1"
     }
@@ -41,7 +39,6 @@ pipeline {
 
         stage("Quality Gate") {
             steps {
-                // This waits for SonarQube to callback Jenkins via Webhook: http://Jenkinsip:8080/
                 timeout(time: 1, unit: 'HOURS') {
                     waitForQualityGate abortPipeline: true
                 }
@@ -90,14 +87,13 @@ pipeline {
                             kubectl apply -f service.yml
                             kubectl apply -f ingress.yml
                             
-                            # Dynamically update the image to the one we just built
                             kubectl set image deployment/netflix-app netflix-app=${env.FINAL_IMAGE}
                         """
                     }
                 }
             }
         }
-    } // End of Stages
+    } 
 
     post {
         success {
@@ -111,5 +107,6 @@ pipeline {
         }
     }
 }
+
 
 
