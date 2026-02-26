@@ -55,8 +55,7 @@ pipeline {
                         ]) {
                             def cleanUrl = RAW_URL.replace("https://", "")
                             def fullImageTag = "${cleanUrl}/${IMAGE_NAME}:${BUILD_NUMBER}"
-                            
-                            // Use single quotes to avoid Groovy interpolation security warnings
+                        
                             sh 'echo $PASS | docker login ' + cleanUrl + ' -u $USER --password-stdin'
                             
                             echo "Building: ${fullImageTag}"
@@ -107,6 +106,7 @@ pipeline {
         }
     }
 }
+
 
 
 
